@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+
+# Node
+node_modules/
+frontend/dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Uploads (temporary)
+backend/uploads/
