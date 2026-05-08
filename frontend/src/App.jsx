@@ -47,10 +47,16 @@ export default function App() {
     formData.append('file', file)
 
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 120000)
+
       const response = await fetch(`${API_URL}/api/fact-check`, {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({ detail: response.statusText }))
@@ -67,7 +73,7 @@ export default function App() {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        buffer = lines.pop() // keep incomplete line
+        buffer = lines.pop()
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
@@ -83,7 +89,11 @@ export default function App() {
         }
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong. Please try again.')
+      if (err.name === 'AbortError') {
+        setError('Request timed out. Please try with a smaller PDF or check your connection.')
+      } else {
+        setError(err.message || 'Something went wrong. Please try again.')
+      }
       setPhase(PHASE.ERROR)
     }
   }, [file])

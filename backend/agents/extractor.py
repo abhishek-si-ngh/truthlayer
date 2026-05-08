@@ -1,79 +1,105 @@
 """
-Claim Extractor Agent — uses Google Gemini to identify verifiable factual claims
-from document text. Filters out opinions and subjective statements.
+Claim Extractor Agent — uses Ollama Cloud to identify verifiable factual claims
+from document text.
 """
 
 import os
 import json
 import re
-import google.generativeai as genai
+from utils.ai_client import ai_client
 
-# Configure Gemini
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+def repair_json_list(s: str) -> str:
+    # Remove markdown code fences
+    s = re.sub(r"```json\s*", "", s)
+    s = re.sub(r"```\s*", "", s)
+    
+    # Find the first [ and the last ]
+    start = s.find('[')
+    end = s.rfind(']')
+    if start != -1 and end != -1:
+        s = s[start:end+1]
+    
+    # Replace unescaped newlines
+    s = s.replace('\n', ' ')
+    
+    # Fix trailing commas
+    s = re.sub(r",\s*]", "]", s)
+    s = re.sub(r",\s*}", "}", s)
+    
+    return s.strip()
 
 EXTRACTION_PROMPT = """You are an expert fact-checking analyst. Your job is to extract ONLY specific, verifiable factual claims from the provided document text.
 
-RULES:
-- Extract claims that contain: statistics, percentages, dates, financial figures, technical metrics, named entity facts, scientific data, market figures, rankings, or any concrete numerical/temporal assertions.
-- IGNORE: opinions, predictions, metaphors, marketing language without specific numbers, subjective statements.
-- Each claim must be a self-contained sentence that can be independently verified.
-- Extract between 5 and 20 claims depending on document length.
-- Focus on claims that are most likely to be outdated, exaggerated, or hallucinated.
-
-OUTPUT FORMAT (strict JSON array, no markdown fences):
+### EXAMPLE OUTPUT:
 [
-  {
+  {{
     "id": 1,
-    "claim": "The exact claim text from the document",
-    "context": "Brief surrounding context (1 sentence)",
-    "category": "statistic|date|financial|technical|scientific|other"
-  },
-  ...
+    "claim": "The global AI market reached $900 billion in 2024.",
+    "context": "Market Statistics section",
+    "category": "financial"
+  }}
 ]
 
+### DATA:
 DOCUMENT TEXT:
 {text}
 
-Return ONLY the JSON array. No explanation, no markdown."""
+### OUTPUT INSTRUCTIONS:
+Return ONLY the JSON array. Do not include markdown code fences or explanation. Ensure all JSON strings are properly escaped.
+"""
 
-
-def extract_claims(document_text: str) -> list[dict]:
+async def extract_claims(document_text: str) -> list[dict]:
     """
-    Use Gemini to extract verifiable claims from document text.
+    Use AI to extract verifiable claims from document text.
     Returns a list of claim dictionaries.
     """
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        generation_config=genai.types.GenerationConfig(
-            temperature=0.1,
-            max_output_tokens=8192,
-        ),
-    )
-
-    # Truncate to ~50k chars to stay within context limits
-    truncated_text = document_text[:50000]
-
+    # Truncate to ~30k chars for context safety
+    truncated_text = document_text[:30000]
     prompt = EXTRACTION_PROMPT.format(text=truncated_text)
 
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
+    try:
+        raw = await ai_client.generate_completion(
+            prompt=prompt,
+            temperature=0.1,
+            max_tokens=4096
+        )
+        raw = raw.strip()
+    except Exception as e:
+        print(f"Ollama extraction error: {e}")
+        raise
 
-    # Strip markdown fences if present
-    raw = re.sub(r"^```(?:json)?\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-
-    claims = json.loads(raw)
+    # Robust JSON extraction
+    try:
+        json_str = repair_json_list(raw)
+        claims = json.loads(json_str)
+    except Exception as e:
+        print(f"JSON extraction error in extractor: {e}. Raw: {raw}")
+        # Try to find all claim blocks with regex as fallback
+        claims = []
+        claim_texts = re.findall(r'"claim":\s*"([^"]+)"', raw)
+        for i, text in enumerate(claim_texts):
+            claims.append({
+                "id": i + 1,
+                "claim": text,
+                "context": "Extracted via fallback parser",
+                "category": "other"
+            })
+        
+        if not claims:
+            raise Exception(f"Failed to parse any claims from LLM response: {e}")
 
     # Validate structure
     validated = []
-    for i, c in enumerate(claims):
-        validated.append(
-            {
-                "id": c.get("id", i + 1),
-                "claim": str(c.get("claim", "")).strip(),
-                "context": str(c.get("context", "")).strip(),
-                "category": str(c.get("category", "other")).strip(),
-            }
-        )
-
+    if isinstance(claims, list):
+        for i, c in enumerate(claims):
+            if isinstance(c, dict):
+                validated.append(
+                    {
+                        "id": c.get("id", i + 1),
+                        "claim": str(c.get("claim", "")).strip(),
+                        "context": str(c.get("context", "")).strip(),
+                        "category": str(c.get("category", "other")).strip(),
+                    }
+                )
+    
     return validated

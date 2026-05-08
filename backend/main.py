@@ -10,12 +10,11 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
+load_dotenv()
 
 from utils.pdf_parser import extract_text_from_pdf
 from agents.extractor import extract_claims
 from agents.verifier import verify_claim
-
-load_dotenv()
 
 app = FastAPI(
     title="TruthLayer API",
@@ -24,9 +23,11 @@ app = FastAPI(
 )
 
 # CORS — allow frontend origins
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -83,7 +84,7 @@ async def fact_check_stream(file_bytes: bytes, filename: str):
         await asyncio.sleep(0)
 
         try:
-            claims = await asyncio.to_thread(extract_claims, text)
+            claims = await extract_claims(text)
         except Exception as e:
             yield send_event("error", {"message": f"Claim extraction failed: {str(e)}"})
             return
@@ -117,7 +118,7 @@ async def fact_check_stream(file_bytes: bytes, filename: str):
             await asyncio.sleep(0)
 
             try:
-                result = await asyncio.to_thread(verify_claim, claim)
+                result = await verify_claim(claim)
             except Exception as e:
                 result = {
                     **claim,
