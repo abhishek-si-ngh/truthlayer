@@ -15,34 +15,49 @@ class AIClient:
         # Prioritize Groq (fastest), then Gemini, then Ollama
         errors = []
 
+        async def attempt_with_retry(func, name, retries=2):
+            for i in range(retries + 1):
+                try:
+                    return await func()
+                except Exception as e:
+                    err_str = str(e)
+                    # If it's a rate limit error (429), wait a bit and retry
+                    if "429" in err_str and i < retries:
+                        wait_time = (i + 1) * 2 # 2s, 4s
+                        print(f"--- {name} rate limited. Retrying in {wait_time}s... ---")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    return e # Return the exception to be handled
+            return Exception(f"{name} failed after {retries} retries")
+
         # 1. Try Groq
         if groq_client.api_key:
-            try:
-                return await groq_client.generate_completion(prompt, temperature=temperature, max_tokens=max_tokens)
-            except Exception as e:
-                err_msg = f"Groq error: {str(e)}"
-                print(err_msg)
-                errors.append(err_msg)
+            res = await attempt_with_retry(
+                lambda: groq_client.generate_completion(prompt, temperature=temperature, max_tokens=max_tokens),
+                "Groq"
+            )
+            if isinstance(res, str): return res
+            errors.append(f"Groq error: {str(res)}")
 
         # 2. Try Gemini
         if gemini_rotator.keys:
-            try:
+            async def gemini_call():
                 model = gemini_rotator.get_model()
                 response = await asyncio.to_thread(model.generate_content, prompt)
                 return response.text
-            except Exception as e:
-                err_msg = f"Gemini error: {str(e)}"
-                print(err_msg)
-                errors.append(err_msg)
+
+            res = await attempt_with_retry(gemini_call, "Gemini")
+            if isinstance(res, str): return res
+            errors.append(f"Gemini error: {str(res)}")
         
         # 3. Try Ollama
         if ollama_client.api_key or os.environ.get("OLLAMA_BASE_URL"):
-            try:
-                return await ollama_client.generate_completion(prompt, temperature=temperature, max_tokens=max_tokens)
-            except Exception as e:
-                err_msg = f"Ollama error: {str(e)}"
-                print(err_msg)
-                errors.append(err_msg)
+            res = await attempt_with_retry(
+                lambda: ollama_client.generate_completion(prompt, temperature=temperature, max_tokens=max_tokens),
+                "Ollama"
+            )
+            if isinstance(res, str): return res
+            errors.append(f"Ollama error: {str(res)}")
 
         # If we get here, everything failed or no keys provided
         error_details = "\n".join(errors)

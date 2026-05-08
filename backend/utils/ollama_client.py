@@ -12,7 +12,8 @@ class OllamaClient:
         self.api_key = os.environ.get("OLLAMA_API_KEY")
         # Default to Ollama Cloud if key starts with specific prefix, otherwise local
         self.base_url = os.environ.get("OLLAMA_BASE_URL", "https://ollama.com/v1")
-        self.default_model = os.environ.get("OLLAMA_MODEL", "llama3.1")
+        # Support multiple model names to increase chances of success
+        self.default_model = os.environ.get("OLLAMA_MODEL", "llama-3.1-8b")
 
     async def generate_completion(
         self, 
