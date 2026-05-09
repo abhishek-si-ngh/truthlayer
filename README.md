@@ -98,7 +98,8 @@ truthlayer/
 │   │   └── pdf_parser.py        # PyMuPDF text extraction utility
 │   ├── requirements.txt
 │   ├── render.yaml              # Render deployment config
-│   └── .env.example             # Environment variable template
+│   ├── .env.example             # Environment variable template
+│   └── README.md                # Backend-specific documentation
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx              # Main app with SSE state machine
@@ -112,7 +113,8 @@ truthlayer/
 │   ├── index.html
 │   ├── vite.config.js
 │   ├── vercel.json              # Vercel deployment config (SPA routing fix)
-│   └── .env.example
+│   ├── .env.example
+│   └── README.md                # Frontend-specific documentation
 ├── render.yaml                  # Root-level render config reference
 ├── .gitignore
 └── README.md
@@ -135,7 +137,7 @@ truthlayer/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/truthlayer.git
+git clone https://github.com/abhishek-si-ngh/truthlayer.git
 cd truthlayer
 ```
 

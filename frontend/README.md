@@ -1,16 +1,55 @@
-# React + Vite
+# 🖥️ TruthLayer Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React-based web interface for **TruthLayer**, an AI-powered fact-checking engine. This application allows users to upload PDF documents and view real-time claim verification results streamed from the backend.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Drag-and-Drop Upload**: Easy PDF uploading using a custom `UploadZone` component.
+- **Real-time Streaming**: Uses Server-Sent Events (SSE) to display verification results as they arrive.
+- **Interactive Claim Cards**: Displays claim status (Verified, Inaccurate, False, Unverifiable) with source links and confidence scores.
+- **Dynamic Filtering**: Filter results by verdict type or search for specific keywords.
+- **Progress Tracking**: Visual feedback during the parsing, extraction, and verification stages.
+- **Responsive Design**: Modern UI built with Vanilla CSS and React.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Framework**: [React 18](https://reactjs.org/)
+- **Build Tool**: [Vite](https://vitejs.dev/)
+- **State Management**: React Hooks (useState, useCallback, useRef)
+- **Styling**: Vanilla CSS (Custom design system)
+- **Deployment**: [Vercel](https://vercel.com/)
 
-## Expanding the ESLint configuration
+## 📁 Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `src/components/`: Reusable UI components.
+  - `ClaimCard.jsx`: Individual result display.
+  - `UploadZone.jsx`: File upload logic and UI.
+  - `ProgressBar.jsx`: Multi-stage progress indicator.
+  - `ResultsPanel.jsx`: Filtering and summary dashboard.
+- `src/App.jsx`: Main application logic and SSE stream handling.
+- `src/index.css`: Global styles and animations.
+
+## 🔧 Local Setup
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Environment Variables**:
+   Create a `.env.local` file in the `frontend` directory:
+   ```env
+   VITE_API_URL=http://localhost:8000
+   ```
+
+3. **Run Development Server**:
+   ```bash
+   npm run dev
+   ```
+   The app will be available at `http://localhost:5173`.
+
+## 🚢 Deployment
+
+The frontend is configured for deployment on **Vercel**.
+- `vercel.json`: Handles SPA routing to ensure `index.html` is served for all paths.
+- Ensure `VITE_API_URL` is set to your production backend URL in the Vercel dashboard.
